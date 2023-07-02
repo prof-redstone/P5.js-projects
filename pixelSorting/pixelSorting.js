@@ -1,4 +1,5 @@
 let img;
+let mask;
 let res;
 let width = 400;
 let height = 400;
@@ -6,7 +7,8 @@ bruit.seed(Math.random());
 
 
 function preload() {
-    img = loadImage("img/rain.jpg");
+    img = loadImage("img/moi.jpg");
+    mask = loadImage("img/moiMask.jpg");
 }
 
 function setup() {
@@ -18,7 +20,7 @@ function setup() {
     res = img.get();
 
 
-    sortImage()
+    sortImageMask()
 }
 
 
@@ -79,19 +81,17 @@ function sortImage() {
                     let valmin = getPix(j, i);
 
                     for (let k = j + 1; k < end; k++) {
-                        if (comp(getPix(k,i), valmin, "green") == inv) {
-                            valmin = getPix(k,i);
+                        if (comp(getPix(k, i), valmin, "green") == inv) {
+                            valmin = getPix(k, i);
                             indmin = k;
                         }
                     }
                     //swap
-                    swapPix(j,i, indmin, i);
+                    swapPix(j, i, indmin, i);
                 }
             }
         }
     }
-
-
     res.updatePixels();
 }
 
@@ -104,6 +104,67 @@ function phase(i, min, max, widthLine) {
         append(nbs, nb)
     }
     return nbs;
+}
+
+function sortImageMask() {
+    //up
+    res.loadPixels();
+    mask.loadPixels();
+    let inv = false;
+
+    for (let i = 0; i < width; i++) { // i la ligne principale
+
+        let str = phaseMask(i);
+
+        for (let m = 0; m < str.length ; m++) { //petite ligne
+            let start = str[m][0];
+            let end = str[m][1];
+
+            for (let j = start; j < end; j++) {
+                let indmin = j;
+                let valmin = getPix(j, i);
+
+                for (let k = j + 1; k < end; k++) {
+                    if (comp(getPix(k, i), valmin, "hue") == inv) {
+                        valmin = getPix(k, i);
+                        indmin = k;
+                    }
+                }
+                //swap
+                swapPix(j, i, indmin, i);
+            }
+        }
+    }
+    res.updatePixels();
+    mask.updatePixels();
+}
+
+function phaseMask(i) { //juste la ligne
+    let colstr = [] // collection de string a sort dans la colonne
+
+    let start = null;
+    for (let j = 0; j < height; j++) {
+        if (mask.pixels[j * width * 4 + i * 4 + 0] > 255/2) { //si pixel rouge et avant noire
+            if(start == null){
+                start = j
+            }
+        }else{
+            if(start != null){
+                append(colstr, [start, j-1]);
+                start = null;
+            }
+        }
+    }
+    if(start != null){
+        append(colstr, [start, height-1]);
+    }
+
+    //recouper les lignes
+    for (let j = 0; j < colstr; j++) {
+        
+    }
+
+    return colstr
 }
 
 function getPix(i, j) {
@@ -141,7 +202,7 @@ function comp(a, b, mode) { //comparaison de 2 pixels
         case "red":
             return a[1] > b[1];
     }
-    return a[0] + a[1] + a[2] > b[0] + b[1] + b[2];//light
+    return a[0] + a[1] + a[2] > b[0] + b[1] + b[2]; //light
 }
 
 function getRND(seed1, seed2) {
