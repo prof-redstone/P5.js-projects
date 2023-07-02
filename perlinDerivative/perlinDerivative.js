@@ -95,3 +95,21 @@ function Screen(){
     console.log(canvas)
     saveCanvas(canvas, Date.now().toString() , "jpg")
 }
+
+
+function newNoise(){
+    for (let i = 0; i < width/vecZoom; i++) {
+        for (let j = 0; j < height/vecZoom; j++) {
+            gride[i][j] = [];
+        }
+    }
+    for (let i = 0; i < width/vecZoom; i++) {
+        for (let j = 0; j < height/vecZoom; j++) {
+            let x = map(noise(i/zoom*vecZoom,j/zoom*vecZoom) - noise((i+1)/zoom*vecZoom,(j)/zoom*vecZoom) , -1,1,-vecZoom*vecSize,vecZoom*vecSize);
+            let y = map(noise(i/zoom*vecZoom,j/zoom*vecZoom) - noise((i)/zoom*vecZoom,(j+1)/zoom*vecZoom) , -1,1,-vecZoom*vecSize,vecZoom*vecSize);
+            gride[i][j] = [x,y];
+            //line(i*vecZoom, j*vecZoom, i*vecZoom + x, j*vecZoom + y);
+
+        }
+    }
+}
