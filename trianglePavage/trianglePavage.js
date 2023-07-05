@@ -6,6 +6,11 @@ let triW = 50;
 let triH = triW * Math.sin(Math.PI / 3)
 let time = 0
 
+let mouseX = null;
+let mouseY = null;
+let timeMouse = 0;
+let bool = false;
+
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
@@ -21,10 +26,11 @@ function setup() {
 
 function draw() {
     time++;
+    timeMouse++;
     background(50);
     for (let i = -1; i <= W / triW; i++) {
         for (let j = 0; j <= H / triH + 1; j++) {
-            col(i,j)
+            col(i, j)
             ////console.log(noise(i, j, time/100))
             beginShape()
             vertex(i * triW + (triW / 2) * (j % 2), j * triH)
@@ -32,7 +38,7 @@ function draw() {
             vertex((i + j % 2) * triW + (triW / 2) * ((j + 1) % 2), (j + 1) * triH)
             endShape(CLOSE)
 
-            col(i,j+0.5)
+            col(i, j + 0.5)
             beginShape()
             vertex(i * triW + (triW / 2) * (j % 2), j * triH)
             vertex((i + 1) * triW + (triW / 2) * (j % 2), j * triH)
@@ -42,11 +48,36 @@ function draw() {
     }
 }
 
-function col(i,j){
-    let col = HSLtoRGB(2.3, 0, 20 - (noise(i / 0.1, j / 0.1, time / 100)) * 50)
+function col(i, j) {
+    let res = 0;
+    let dist = 0;
+    let distX = i * triW - mouseX;
+    let distY = j * triH - mouseY;
+    if (mouseX != null) {
+        let speed = 50;
+        if (bool == false) {
+            dist = max(timeMouse * speed - sqrt(distX * distX + distY * distY), 0);
+        } else {
+            dist = min(timeMouse * speed - sqrt(distX * distX + distY * distY), 0);
+        }
+        res = triWave((dist))
+    }
+
+
+    let col = HSLtoRGB(floor(res) * (time / 25 - sqrt(distX * distX + distY * distY)*0.002) + 2.3, 10, (noise(i / 0.1, j / 0.1, time / 100)) * 30)
+    //let col = HSLtoRGB(2.3, 0, res * 50)
     //10 + (noise(i/10, j/10, time/100)-0.5)*10
     fill(col[0], col[1], col[2])
     stroke(col[0], col[1], col[2])
+}
+
+function triWave(x) {
+    let size = 100;
+    if (abs(x) > size) {
+        return 0;
+    } else {
+        return abs(abs(x) - size) / size
+    }
 }
 
 function HSLtoRGB(hue, saturation, darkness, alpha) {
@@ -103,4 +134,11 @@ function HSLtoRGB(hue, saturation, darkness, alpha) {
     blue = Math.round(blue * dark);
 
     return [red, blue, green, alpha];
+}
+
+function mouseClicked(event) {
+    mouseX = event.x;
+    mouseY = event.y;
+    timeMouse = 0;
+    bool = bool ? false : true //pour alterner
 }
