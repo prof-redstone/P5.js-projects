@@ -7,8 +7,8 @@ bruit.seed(Math.random());
 
 
 function preload() {
-    img = loadImage("img/moi.jpg");
-    mask = loadImage("img/moiMask.jpg");
+    img = loadImage("img/tree3Low.jpg");
+    mask = loadImage("img/tree3LowMask.jpg");
 }
 
 function setup() {
@@ -20,6 +20,7 @@ function setup() {
     res = img.get();
 
 
+    //sortImage()
     sortImageMask()
 }
 
@@ -35,11 +36,12 @@ function sortImage() {
 
     res.loadPixels();
 
-    let dir = "up";
+    let dir = "left";
     let inv = true;
-    let maxLen = 20;
-    let minLen = 1;
-    let strokeSize = 1;
+    let maxLen = 100;
+    let minLen = 10;
+    let strokeSize = 5;
+    let mode = "hue";
 
     if (dir == "left") {
         for (let i = 0; i < height; i++) { // i la ligne principale
@@ -81,7 +83,7 @@ function sortImage() {
                     let valmin = getPix(j, i);
 
                     for (let k = j + 1; k < end; k++) {
-                        if (comp(getPix(k, i), valmin, "green") == inv) {
+                        if (comp(getPix(k, i), valmin, mode) == inv) {
                             valmin = getPix(k, i);
                             indmin = k;
                         }
@@ -110,13 +112,18 @@ function sortImageMask() {
     //up
     res.loadPixels();
     mask.loadPixels();
-    let inv = false;
+    let inv = true;
+    let maxLen = 200;
+    let minLen = 50;
+    let cut = true;
+    let mode = "red"
+    let strokeWeight = 50;
 
     for (let i = 0; i < width; i++) { // i la ligne principale
 
-        let str = phaseMask(i);
+        let str = phaseMask(i, minLen, maxLen, cut, strokeWeight);
 
-        for (let m = 0; m < str.length ; m++) { //petite ligne
+        for (let m = 0; m < str.length; m++) { //petite ligne
             let start = str[m][0];
             let end = str[m][1];
 
@@ -125,7 +132,7 @@ function sortImageMask() {
                 let valmin = getPix(j, i);
 
                 for (let k = j + 1; k < end; k++) {
-                    if (comp(getPix(k, i), valmin, "hue") == inv) {
+                    if (comp(getPix(k, i), valmin, mode) == inv) {
                         valmin = getPix(k, i);
                         indmin = k;
                     }
@@ -139,31 +146,51 @@ function sortImageMask() {
     mask.updatePixels();
 }
 
-function phaseMask(i) { //juste la ligne
-    let colstr = [] // collection de string a sort dans la colonne
+function phaseMask(i, min, max, cut, strokeWeight) { //juste la ligne
+    let colstrTemp = [] // collection de string a sort dans la colonne
 
     let start = null;
     for (let j = 0; j < height; j++) {
-        if (mask.pixels[j * width * 4 + i * 4 + 0] > 255/2) { //si pixel rouge et avant noire
-            if(start == null){
+        if (mask.pixels[j * width * 4 + i * 4 + 0] > 255 / 2) { //si pixel rouge et avant noire
+            if (start == null) {
                 start = j
             }
-        }else{
-            if(start != null){
-                append(colstr, [start, j-1]);
+        } else {
+            if (start != null) {
+                append(colstrTemp, [start, j - 1]);
                 start = null;
             }
         }
     }
-    if(start != null){
-        append(colstr, [start, height-1]);
+    if (start != null) {
+        append(colstrTemp, [start, height - 1]);
     }
 
     //recouper les lignes
-    for (let j = 0; j < colstr; j++) {
-        
+    if(!cut){
+        return colstrTemp;
     }
 
+    let colstr = [];
+    for (let j = 0; j < colstrTemp.length; j++) {
+        let start = colstrTemp[j][0];
+        let tot = start;
+        while (tot < colstrTemp[j][1]) {
+            //let nb = min + floor(getRND(i, tot) * (max - min));
+            let nb = 1 + floor(getRND(floor(i / strokeWeight), tot) * (max - min));//+1 pour eviter les while true
+            if(tot != colstrTemp[j][0]){//pour éviter les patterne sur les bords
+                nb += min;
+            }
+            tot += nb;
+            if(tot > colstrTemp[j][1]){
+                append(colstr, [start, colstrTemp[j][1]])
+            }else{
+                append(colstr, [start, tot])
+                start = tot;
+            }
+            
+        }
+    }
     return colstr
 }
 
@@ -201,8 +228,10 @@ function comp(a, b, mode) { //comparaison de 2 pixels
             return a[1] > b[1];
         case "red":
             return a[1] > b[1];
+        case "light":
+            return a[0] + a[1] + a[2] > b[0] + b[1] + b[2]; //light
     }
-    return a[0] + a[1] + a[2] > b[0] + b[1] + b[2]; //light
+
 }
 
 function getRND(seed1, seed2) {
@@ -211,6 +240,6 @@ function getRND(seed1, seed2) {
 
 function keyTyped() {
     if (key === 's') {
-        res.save('img-' + Date.now(), 'png');
+        res.save('img-' + Date.now(), 'jpg');
     }
 }
