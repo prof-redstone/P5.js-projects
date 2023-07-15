@@ -7,7 +7,7 @@ bruit.seed(Math.random());
 
 
 function preload() {
-    img = loadImage("img/tree3Low.jpg");
+    img = loadImage("img/cloudLow.jpg");
     mask = loadImage("img/tree3LowMask.jpg");
 }
 
@@ -20,8 +20,8 @@ function setup() {
     res = img.get();
 
 
-    //sortImage()
-    sortImageMask()
+    sortImage()
+    //sortImageMask()
 }
 
 
@@ -37,10 +37,10 @@ function sortImage() {
     res.loadPixels();
 
     let dir = "left";
-    let inv = true;
-    let maxLen = 100;
-    let minLen = 10;
-    let strokeSize = 5;
+    let inv = false;
+    let maxLen = 300;
+    let minLen = 200;
+    let strokeSize = 2;
     let mode = "hue";
 
     if (dir == "left") {
