@@ -6,7 +6,7 @@ uniform float time;
 uniform vec2 resolution;
 uniform vec2 mouse;
 
-#define MINDIST 0.001
+#define MINDIST 0.01
 #define STEPS 300
 #define PI 3.14159265
 
@@ -66,20 +66,41 @@ vec4 dBox(vec3 p, vec3 pos, vec3 s, float i){
     return vec4(d, col);
 }
 
+vec4 dTriangle(vec3 p, vec3 pos, float s, float i){
+    vec3 z = (p - pos);
+    const int it = 10;
+    float Scale = 2.0;
+    for(int n = 0; n < it; n++){
+       if(z.x+z.y<0.) z.xy = -z.yx; // fold 1
+       if(z.x+z.z<0.) z.xz = -z.zx; // fold 2
+       if(z.y+z.z<0.) z.zy = -z.yz; // fold 3	
+       z = z*Scale - s*(Scale-1.0);
+    }
+
+	float res = length(z) * pow(Scale, float(-(it)));
+
+    return vec4(res - 0.003,1.0,0.0,0.0);
+}
+
+vec4 dField(vec3 p, vec3 pos, float r, float i){
+    p.xz = mod(p.xz + vec2(1.5), vec2(3.0)) - vec2(1.5);
+    return dSphere(p,pos,r,i);
+}
+
 vec4 min4(vec4 a, vec4 b) {
     return (a.x < b.x) ? a : b;
 }
 
 vec4 scene(vec3 p) {
-    vec4 dp = dPlane(p, -0.5, 2.0);
-    vec4 ds1 = dSphere(p, vec3(0.0, -0.9, 0.0), 1.0, 1.0);
-    vec4 ds2 = dBox(p, vec3(1.0, 1.5, 0.0), vec3(0.1,0.1,0.1),  4.0);
+    vec4 dp = dPlane(p, -5.5, 2.0);
+    vec4 ds1 = dSphere(p, vec3(3.0, 0.0, 0.0), 0.5, 4.0);
+    vec4 ds2 = dTriangle(p, vec3(0.0, 0.0, 0.0), 2.0,  1.0);
     return min4(dp, min4(ds1, ds2));
 }
 
 vec3 normal(vec3 p) {
     float dp = scene(p).x;
-    float eps = 0.01;
+    float eps = 0.001;
 
     float dX = scene(p + vec3(eps, 0.0, 0.0)).x - dp;
     float dY = scene(p + vec3(0.0, eps, 0.0)).x - dp;
@@ -147,7 +168,7 @@ void main() {
     //vec3 rO = vec3(0.0, mouse.y, 0.0);
     //vec3 rD = normalize((vec3(uv.x, uv.y, 0.5) - rO));
 
-    vec3 eye = vec3(cos(mouse.x*2.*PI)*4.,0.5 + mouse.y*2., sin(mouse.x*2.*PI)*4.);
+    vec3 eye = vec3(cos(mouse.x*2.*PI)*4.,0.5 + mouse.y*3., sin(mouse.x*2.*PI)*4.);
     vec3 target = vec3(0.0,0.0,0.0);
     vec3 fwd = normalize(target - eye) ;//forward
     vec3 side = normalize(cross(vec3(0.0,1.0,0.0), fwd));
