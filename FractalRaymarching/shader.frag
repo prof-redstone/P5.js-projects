@@ -7,16 +7,15 @@ uniform vec2 resolution;
 uniform vec2 mouse;
 
 #define MINDIST 0.01
-#define STEPS 300
 #define PI 3.14159265
 
 
-bool fcomp(float a, float b) {
+bool fcomp(float a, float b) {//test d'égalité entre 2 floats
     const float marge = 0.01;
     return (b - marge < a && a < b + marge) ? true : false;
 }
 
-vec3 indToCol(float i) {
+vec3 indToCol(float i) { //couleur en fonction de l'indice
     if (fcomp(i, 0.0)) return vec3(0.0, 0.0, 0.0);
     if (fcomp(i, 1.0)) return vec3(1.0, 0.0, 0.0);
     if (fcomp(i, 2.0)) return vec3(0.0, 1.0, 0.0);
@@ -92,20 +91,21 @@ vec3 normFold(vec3 z, vec3 n){
     return z;
 }
 
-vec4 dFract1(vec3 p, vec3 pos, float s, float i){
+vec4 dFract(vec3 p, vec3 pos, float s, float i){
     vec3 z = (p - pos);
-    const int it = 10;
+    const int it = 20;
+    float size = 0.05 / float(it);
     float Scale = 2.0; 
     for(int n = 0; n < it; n++){
-        z = normFold(z, normalize(vec3(sin(time)*2.,1.0,0.3)));
-        z = normFold(z, normalize(vec3(0.2,0.3,0.1)));
+        z = normFold(z, normalize(vec3(sin(time/3.)*2.,1.0,0.3)));
+        z = normFold(z, normalize(vec3(0.925,0.3,0.1)));
         z = normFold(z, normalize(vec3(0.8,-0.3,0.56)));
         z = z*Scale - s*(Scale-1.0);
     }
 
 	float res = length(z) * pow(Scale, float(-(it)));
 
-    return vec4(res - 0.003,1.0,0.0,0.0);
+    return vec4(res - size,1.0,0.0,0.0);
 }
 
 vec4 min4(vec4 a, vec4 b) {
@@ -113,15 +113,13 @@ vec4 min4(vec4 a, vec4 b) {
 }
 
 vec4 scene(vec3 p) {
-    vec4 dp = dPlane(p, -5.5, 2.0);
-    vec4 ds1 = dSphere(p, vec3(3.0, 0.0, 0.0), 0.5, 4.0);
-    vec4 ds2 = dFract1(p, vec3(0.0, 0.0, 0.0), 2.0,  1.0);
-    return min4(dp, min4(ds1, ds2));
+    vec4 d = dFract(p, vec3(0.0, 0.0, 0.0), 2.0,  1.0);
+    return d;
 }
 
 vec3 normal(vec3 p) {
     float dp = scene(p).x;
-    float eps = 0.001;
+    float eps = 0.005;
 
     float dX = scene(p + vec3(eps, 0.0, 0.0)).x - dp;
     float dY = scene(p + vec3(0.0, eps, 0.0)).x - dp;
@@ -141,8 +139,9 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
     float d = 0.0; //dist total parcouru
     vec4 s; //distance et couleur de la scene
     vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
+    const int steps = 300;
 
-    for (int i = 0; i < STEPS; i++) {
+    for (int i = 0; i < steps; i++) {
         cp = rO + rD * d; //met a jour cp
         s = scene(cp);
         d += s.x;
@@ -153,20 +152,35 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
     return vec4(d, col);
 }
 
+float shadowMarch(vec3 rO, vec3 rD, float maxDist){
+    vec3 cp = rO; //current position
+    float d = 0.0; //dist total parcouru
+    vec4 s; //distance et couleur de la scene
+    vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
+    float mind = 1000000.;
+    float distShadow = 0.01;
+    const int steps = 50;
+
+    for (int i = 0; i < steps; i++) {
+        cp = rO + rD * d; //met a jour cp
+        s = scene(cp);
+        d += s.x;
+        col = s.yzw;
+        if(s.x < mind) mind = s.x;
+        if (d < MINDIST) return 0.0; //touche
+        if (d > maxDist) break; //trop loin
+    }
+    return min(1.0, mind/distShadow);
+}
+
 float lighting(vec3 p, vec3 n) {
     //p le point, n la normal de la surface en ce point
     float gamma = 0.8;
 
-    vec4 l1 = vec4(1.0, 1.0 +cos(time), 2.0, 5.0); //pos + puissance
-    vec4 l2 = vec4(0.0, 100.0, 0.0, 1.0);
-
-    float res1 = max(0.0, dot(n, normalize(l1.xyz - p))) * l1.w; //impacte de la lumiere * sa puissance
-    res1 *= march(p + n*MINDIST*5., normalize(l1.xyz - p), length(l1.xyz - p)).x < length(l1.xyz - p) ? 0. : 1.; //calcule de l'ombre, true si dans l'ombre
-    
-    float res2 = max(0.0, dot(n, normalize(l2.xyz - p))) * l2.w;
-    res2 *= march(p + n*MINDIST*5., normalize(l2.xyz - p), length(l2.xyz - p)).x < length(l2.xyz - p) ? 0. : 1.; 
-
-    return (res1 + res2) / (l1.w + l2.w)*gamma; //normaliser le niveau de lumiere
+    vec4 l = vec4(0.0, 100.0, 0.0, 1.0);
+    float res = max(0.0, dot(n, normalize(l.xyz - p))) * l.w; //impacte de la lumiere * sa puissance
+    res *= shadowMarch(p + n*MINDIST*5., normalize(l.xyz - p), length(l.xyz - p)); //calcule de l'ombre, true si dans l'ombre
+    return res / l.w*gamma; //normaliser le niveau de lumiere
 }
 
 vec3 color(vec3 rO, vec3 rD) {
