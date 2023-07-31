@@ -93,13 +93,13 @@ vec3 normFold(vec3 z, vec3 n){
 
 vec4 dFract(vec3 p, vec3 pos, float s, float i){
     vec3 z = (p - pos);
-    const int it = 20;
+    const int it = 15;
     float size = 0.05 / float(it);
     float Scale = 2.0; 
     for(int n = 0; n < it; n++){
         z = normFold(z, normalize(vec3(sin(time/3.)*2.,1.0,0.3)));
         z = normFold(z, normalize(vec3(0.925,0.3,0.1)));
-        z = normFold(z, normalize(vec3(0.8,-0.3,0.56)));
+        z = normFold(z, normalize(vec3(0.8,-0.3,2.56)));
         z = z*Scale - s*(Scale-1.0);
     }
 
@@ -140,15 +140,28 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
     vec4 s; //distance et couleur de la scene
     vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
     const int steps = 300;
+    float mind = 1000000.;
+    float nbIt = 0.;
 
     for (int i = 0; i < steps; i++) {
+        nbIt += 1.0;
         cp = rO + rD * d; //met a jour cp
         s = scene(cp);
         d += s.x;
         col = s.yzw;
-        if (d < MINDIST) break; //touche
-        if (d > maxDist) return vec4(d, colorBG(rD)); //trop loin
+        if(s.x < mind) mind = s.x;
+        if (s.x < MINDIST) {
+            break; //touche
+        }
+        if (d > maxDist) {//trop loin
+            return vec4(d, col*exp(-mind)*0.04 + colorBG(rD));//pour rajouter du fog au tour de la scene
+        } 
     }
+    //ambiante occlusion
+    float AMBIENT_OCCLUSION_STRENGTH = 0.05;
+    float a = 1.0 / (1.0 + float(nbIt) * AMBIENT_OCCLUSION_STRENGTH);
+	col += (1.0 - a) * vec3(-0.8,-0.8,-0.8);
+
     return vec4(d, col);
 }
 
@@ -156,26 +169,27 @@ float shadowMarch(vec3 rO, vec3 rD, float maxDist){
     vec3 cp = rO; //current position
     float d = 0.0; //dist total parcouru
     vec4 s; //distance et couleur de la scene
-    vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
     float mind = 1000000.;
     float distShadow = 0.01;
     const int steps = 50;
+    int nbIt = 0;
 
     for (int i = 0; i < steps; i++) {
+        nbIt++;
         cp = rO + rD * d; //met a jour cp
         s = scene(cp);
         d += s.x;
-        col = s.yzw;
         if(s.x < mind) mind = s.x;
-        if (d < MINDIST) return 0.0; //touche
+        if (s.x < MINDIST) return 0.0; //touche
         if (d > maxDist) break; //trop loin
     }
-    return min(1.0, mind/distShadow);
+    float val = float(steps-nbIt)/float(steps) ; //mind/distShadow;
+    return min(1.0, val);
 }
 
 float lighting(vec3 p, vec3 n) {
     //p le point, n la normal de la surface en ce point
-    float gamma = 0.8;
+    float gamma = 1.0;
 
     vec4 l = vec4(0.0, 100.0, 0.0, 1.0);
     float res = max(0.0, dot(n, normalize(l.xyz - p))) * l.w; //impacte de la lumiere * sa puissance
@@ -188,7 +202,7 @@ vec3 color(vec3 rO, vec3 rD) {
     const float minDist = 0.001;
     vec4 m = march(rO, rD, BGdist);
     vec3 col = m.yzw;
-    vec3 cp = rO + rD * m.x;
+    vec3 cp = rO + rD * m.x; //current point on the surface or BG
     vec3 nor = normal(cp);
     if (m.x < BGdist) {
         col *= lighting(cp, nor) + vec3(1.0, 0.9412, 0.4078)*0.1;
