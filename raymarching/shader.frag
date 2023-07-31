@@ -147,7 +147,7 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
         s = scene(cp);
         d += s.x;
         col = s.yzw;
-        if (d < MINDIST) break; //touche
+        if (s.x < MINDIST) break; //touche
         if (d > maxDist) return vec4(d, colorBG(rD)); //trop loin
     }
     return vec4(d, col);

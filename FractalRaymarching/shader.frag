@@ -6,7 +6,7 @@ uniform float time;
 uniform vec2 resolution;
 uniform vec2 mouse;
 
-#define MINDIST 0.01
+#define MINDIST 0.0001
 #define PI 3.14159265
 
 
@@ -22,6 +22,39 @@ vec3 indToCol(float i) { //couleur en fonction de l'indice
     if (fcomp(i, 3.0)) return vec3(0.0, 0.0, 1.0);
     if (fcomp(i, 4.0)) return vec3(cos(time)*cos(time), cos(time + PI/3.)*cos(time + PI/3.), cos(time + PI*2./3.)*cos(time + PI*2./3.));
 }
+
+//space folding function, aka wtf this function does ?!
+
+vec3 normFold(vec3 z, vec3 n){ //miroir plan (en gros)
+    z -= n * 2.0 * min(0.0, dot(z, n)) ;
+    return z;
+}
+
+vec3 mengerFold(vec3 p) {
+    vec3 z = p;
+	float a = min(z.x - z.y, 0.0);
+	z.x -= a;
+	z.y += a;
+	a = min(z.x - z.z, 0.0);
+	z.x -= a;
+	z.z += a;
+	a = min(z.y - z.z, 0.0);
+	z.y -= a;
+	z.z += a;
+    return z;
+}
+
+vec3 rotX(vec3 z, float s, float c) {
+	return vec3(z.x, c*z.y + s*z.z, c*z.z - s*z.y);
+}
+vec3 rotY(vec3 z, float s, float c) {
+	return vec3(c*z.x - s*z.z, z.y, c*z.z + s*z.x);
+}
+vec3 rotZ(vec3 z, float s, float c) {
+	return vec3(c*z.x + s*z.y, c*z.y - s*z.x, z.z);
+}
+
+//distance estimator classique
 vec4 dPlaneI(vec3 p, vec3 pos, vec3 nor, float h, float i) {
     float d = dot(p-pos,nor) - h;
     vec3 col = indToCol(i);
@@ -86,21 +119,17 @@ vec4 dField(vec3 p, vec3 pos, float r, float i){
     return dSphere(p,pos,r,i);
 }
 
-vec3 normFold(vec3 z, vec3 n){
-    z -= n * 2.0 * min(0.0, dot(z, n)) ;
-    return z;
-}
 
-vec4 dFract(vec3 p, vec3 pos, float s, float i){
+vec4 dFract(vec3 p, vec3 pos, float i){
     vec3 z = (p - pos);
-    const int it = 15;
-    float size = 0.05 / float(it);
+    const int it = 20;
+    float size = 0.0001 ;
     float Scale = 2.0; 
     for(int n = 0; n < it; n++){
         z = normFold(z, normalize(vec3(sin(time/3.)*2.,1.0,0.3)));
-        z = normFold(z, normalize(vec3(0.925,0.3,0.1)));
-        z = normFold(z, normalize(vec3(0.8,-0.3,2.56)));
-        z = z*Scale - s*(Scale-1.0);
+        z = normFold(z, normalize(vec3(0.925,0.3948,0.17865)));
+        z = normFold(z, normalize(vec3(0.817,-0.3864,2.56)));
+        z = z*Scale - (Scale-1.0);
     }
 
 	float res = length(z) * pow(Scale, float(-(it)));
@@ -108,18 +137,40 @@ vec4 dFract(vec3 p, vec3 pos, float s, float i){
     return vec4(res - size,1.0,0.0,0.0);
 }
 
+vec4 dFract2(vec3 p, vec3 pos, float i){
+    vec3 z = (p - pos);
+    const int it = 16;
+    float Ang1 = -9.83;
+    float Ang2 = -1.16;
+    float Scale = 1.9073; 
+    vec3 Shift = vec3(-3.508,-3.593,3.295);
+    for(int n = 0; n < it; ++n){
+        z.xyz = abs(z.xyz);
+		z = rotZ(z, sin(Ang1), cos(Ang1));
+        z = mengerFold(z);
+		z = rotX(z, sin(Ang2), cos(Ang2));
+        z *= Scale;
+        z += Shift;
+    }
+
+    z *= pow(Scale, float(-it));
+    float res = dBox(z, vec3(0.0), vec3(0.001), 0.0).x;
+
+    return vec4(res , 1.0,0.0,0.0);
+}
+
 vec4 min4(vec4 a, vec4 b) {
     return (a.x < b.x) ? a : b;
 }
 
 vec4 scene(vec3 p) {
-    vec4 d = dFract(p, vec3(0.0, 0.0, 0.0), 2.0,  1.0);
+    vec4 d = dFract2(p, vec3(0.0), 1.0);
     return d;
 }
 
 vec3 normal(vec3 p) {
     float dp = scene(p).x;
-    float eps = 0.005;
+    float eps = 0.00001;
 
     float dX = scene(p + vec3(eps, 0.0, 0.0)).x - dp;
     float dY = scene(p + vec3(0.0, eps, 0.0)).x - dp;
@@ -139,7 +190,7 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
     float d = 0.0; //dist total parcouru
     vec4 s; //distance et couleur de la scene
     vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
-    const int steps = 300;
+    const int steps = 500;
     float mind = 1000000.;
     float nbIt = 0.;
 
@@ -154,13 +205,14 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
             break; //touche
         }
         if (d > maxDist) {//trop loin
-            return vec4(d, col*exp(-mind)*0.04 + colorBG(rD));//pour rajouter du fog au tour de la scene
+            return vec4(d, col*exp(-mind)*0.05 + colorBG(rD));//pour rajouter du fog au tour de la scene
         } 
     }
-    //ambiante occlusion
-    float AMBIENT_OCCLUSION_STRENGTH = 0.05;
+
+    //ambiante occlusion, proportionelle au nombre d'etape
+    float AMBIENT_OCCLUSION_STRENGTH = 0.1;
     float a = 1.0 / (1.0 + float(nbIt) * AMBIENT_OCCLUSION_STRENGTH);
-	col += (1.0 - a) * vec3(-0.8,-0.8,-0.8);
+	col += (1.0 - a) * vec3(-1.0,-1.0,-1.0);
 
     return vec4(d, col);
 }
@@ -170,8 +222,7 @@ float shadowMarch(vec3 rO, vec3 rD, float maxDist){
     float d = 0.0; //dist total parcouru
     vec4 s; //distance et couleur de la scene
     float mind = 1000000.;
-    float distShadow = 0.01;
-    const int steps = 50;
+    const int steps = 400;
     int nbIt = 0;
 
     for (int i = 0; i < steps; i++) {
@@ -189,7 +240,7 @@ float shadowMarch(vec3 rO, vec3 rD, float maxDist){
 
 float lighting(vec3 p, vec3 n) {
     //p le point, n la normal de la surface en ce point
-    float gamma = 1.0;
+    float gamma = 0.8;
 
     vec4 l = vec4(0.0, 100.0, 0.0, 1.0);
     float res = max(0.0, dot(n, normalize(l.xyz - p))) * l.w; //impacte de la lumiere * sa puissance
@@ -197,10 +248,10 @@ float lighting(vec3 p, vec3 n) {
     return res / l.w*gamma; //normaliser le niveau de lumiere
 }
 
-vec3 color(vec3 rO, vec3 rD) {
+vec3 color(vec3 rO, vec3 rD) {//fonction principale
     const float BGdist = 50.;
-    const float minDist = 0.001;
-    vec4 m = march(rO, rD, BGdist);
+    const float minDist = 0.001;//distance minimal pour considerer comme toucher la surface
+    vec4 m = march(rO, rD, BGdist); //rayon tire avec distance et couleur
     vec3 col = m.yzw;
     vec3 cp = rO + rD * m.x; //current point on the surface or BG
     vec3 nor = normal(cp);
@@ -217,16 +268,17 @@ void main() {
     //vec3 rO = vec3(0.0, mouse.y, 0.0);
     //vec3 rD = normalize((vec3(uv.x, uv.y, 0.5) - rO));
 
-    vec3 eye = vec3(cos(mouse.x*2.*PI)*4.,0.5 + mouse.y*3., sin(mouse.x*2.*PI)*4.);
-    vec3 target = vec3(0.0,0.0,0.0);
-    vec3 fwd = normalize(target - eye) ;//forward
+    vec3 camera = vec3(cos(mouse.x*2.*PI)*4.,0.5 + mouse.y*3., sin(mouse.x*2.*PI)*4.)*1.5;//position de la camera
+    vec3 target = vec3(0.0,0.0,0.0); //point que regarde la camera (toujours au centre)
+
+    vec3 fwd = normalize(target - camera) ;//forward
     vec3 side = normalize(cross(vec3(0.0,1.0,0.0), fwd));
     vec3 up = cross(fwd, side);//deja normalise
     float zoom = 1.;
 
-    vec3 rD = normalize(fwd*zoom + side*uv.x + up*uv.y);
+    vec3 rD = normalize(fwd*zoom + side*uv.x + up*uv.y);//direction du rayon
 
-    vec3 col = color(eye, rD);
+    vec3 col = color(camera, rD);
 
     gl_FragColor = vec4(col, 1.0);
 }

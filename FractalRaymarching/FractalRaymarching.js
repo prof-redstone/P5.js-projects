@@ -12,7 +12,7 @@ function preload() {
 function setup() {
     let size = min(windowWidth, windowHeight);
     createCanvas(size, size, WEBGL);
-    frameRate(24)
+    frameRate(60)
     pixelDensity(1);
 }
 
