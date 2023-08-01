@@ -5,8 +5,19 @@ varying vec2 vTexCoord;
 uniform float time;
 uniform vec2 resolution;
 uniform vec2 mouse;
+uniform vec3 iposition;
+uniform vec3 ivue;
+uniform float izoom;
+uniform float iAng1;
+uniform float iAng2;
+uniform float iScale;
+uniform int iIt;
+uniform vec3 iShift;
+uniform vec3 iFracCol;
+uniform float iGamma;
 
-#define MINDIST 0.0001
+
+#define MINDIST 0.00001
 #define PI 3.14159265
 
 
@@ -139,24 +150,28 @@ vec4 dFract(vec3 p, vec3 pos, float i){
 
 vec4 dFract2(vec3 p, vec3 pos, float i){
     vec3 z = (p - pos);
-    const int it = 16;
-    float Ang1 = -9.83;
-    float Ang2 = -1.16;
-    float Scale = 1.9073; 
-    vec3 Shift = vec3(-3.508,-3.593,3.295);
-    for(int n = 0; n < it; ++n){
+    int it = iIt;
+    float Ang1 = iAng1 ;
+    float Ang2 = iAng2;
+    float Scale = iScale; 
+    vec3 Shift = iShift;
+    vec3 fracCol = iFracCol;
+    vec3 orbit = vec3(0.0);
+    for(int n = 0; n < 100; ++n){ //hard limite
+        if(n == it) break;
         z.xyz = abs(z.xyz);
 		z = rotZ(z, sin(Ang1), cos(Ang1));
         z = mengerFold(z);
 		z = rotX(z, sin(Ang2), cos(Ang2));
         z *= Scale;
         z += Shift;
+        orbit = max(orbit, z.xyz*fracCol);
     }
 
     z *= pow(Scale, float(-it));
     float res = dBox(z, vec3(0.0), vec3(0.001), 0.0).x;
 
-    return vec4(res , 1.0,0.0,0.0);
+    return vec4(res , clamp(orbit, 0.0, 1.0));
 }
 
 vec4 min4(vec4 a, vec4 b) {
@@ -170,7 +185,7 @@ vec4 scene(vec3 p) {
 
 vec3 normal(vec3 p) {
     float dp = scene(p).x;
-    float eps = 0.00001;
+    float eps = 0.0001;
 
     float dX = scene(p + vec3(eps, 0.0, 0.0)).x - dp;
     float dY = scene(p + vec3(0.0, eps, 0.0)).x - dp;
@@ -179,7 +194,10 @@ vec3 normal(vec3 p) {
 }
 
 vec3 colorBG(vec3 rD) {
-    return vec3(0.0, 0.0157, 0.1294) + vec3(1.0) * (1.-rD.y) * 0.01; //couleur du fond si ne touche rien
+    vec3 blue = vec3(0.0157, 0.0314, 0.1765) + vec3(1.0) * (rD.y) * 0.005; //couleur du fond si ne touche rien
+    float sunSize = 0.02;
+    float sun = clamp(dot(rD, vec3(0.0,1.0,0.0)) -1.0 + sunSize, 0.0, 1.0);
+    return blue + mix(vec3(0.0), vec3(0.9451, 0.9451, 0.1922) - blue, sun)*30.;
 }
 
 vec4 march(vec3 rO, vec3 rD, float maxDist) {
@@ -192,6 +210,7 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
     vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
     const int steps = 500;
     float mind = 1000000.;
+    vec3 colMind = vec3(0.0);
     float nbIt = 0.;
 
     for (int i = 0; i < steps; i++) {
@@ -200,12 +219,12 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
         s = scene(cp);
         d += s.x;
         col = s.yzw;
-        if(s.x < mind) mind = s.x;
+        if(s.x < mind) {mind = s.x; colMind = s.yzw;}
         if (s.x < MINDIST) {
             break; //touche
         }
         if (d > maxDist) {//trop loin
-            return vec4(d, col*exp(-mind)*0.05 + colorBG(rD));//pour rajouter du fog au tour de la scene
+            return vec4(d, /*smoothstep(0.0,1.0,colMind)*exp(-mind)*0.01 +*/ colorBG(rD));//pour rajouter du fog au tour de la scene
         } 
     }
 
@@ -240,7 +259,7 @@ float shadowMarch(vec3 rO, vec3 rD, float maxDist){
 
 float lighting(vec3 p, vec3 n) {
     //p le point, n la normal de la surface en ce point
-    float gamma = 0.8;
+    float gamma = 0.9; 
 
     vec4 l = vec4(0.0, 100.0, 0.0, 1.0);
     float res = max(0.0, dot(n, normalize(l.xyz - p))) * l.w; //impacte de la lumiere * sa puissance
@@ -251,6 +270,7 @@ float lighting(vec3 p, vec3 n) {
 vec3 color(vec3 rO, vec3 rD) {//fonction principale
     const float BGdist = 50.;
     const float minDist = 0.001;//distance minimal pour considerer comme toucher la surface
+
     vec4 m = march(rO, rD, BGdist); //rayon tire avec distance et couleur
     vec3 col = m.yzw;
     vec3 cp = rO + rD * m.x; //current point on the surface or BG
@@ -259,6 +279,7 @@ vec3 color(vec3 rO, vec3 rD) {//fonction principale
         col *= lighting(cp, nor) + vec3(1.0, 0.9412, 0.4078)*0.1;
     }
     col = pow(col, vec3(0.4545)); //correction pour la vision de l'oeil
+    col *= iGamma;
     return col;
 }
 
@@ -268,13 +289,13 @@ void main() {
     //vec3 rO = vec3(0.0, mouse.y, 0.0);
     //vec3 rD = normalize((vec3(uv.x, uv.y, 0.5) - rO));
 
-    vec3 camera = vec3(cos(mouse.x*2.*PI)*4.,0.5 + mouse.y*3., sin(mouse.x*2.*PI)*4.)*1.5;//position de la camera
-    vec3 target = vec3(0.0,0.0,0.0); //point que regarde la camera (toujours au centre)
+    vec3 camera = iposition; //vec3(cos(mouse.x*2.*PI)*4.,0.5 + mouse.y*3., sin(mouse.x*2.*PI)*4.)*1.5;//position de la camera
+    vec3 target = ivue; //vec3(0.0,0.0,0.0); //point que regarde la camera (toujours au centre)
 
     vec3 fwd = normalize(target - camera) ;//forward
     vec3 side = normalize(cross(vec3(0.0,1.0,0.0), fwd));
     vec3 up = cross(fwd, side);//deja normalise
-    float zoom = 1.;
+    float zoom = izoom;
 
     vec3 rD = normalize(fwd*zoom + side*uv.x + up*uv.y);//direction du rayon
 
