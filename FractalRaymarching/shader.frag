@@ -169,7 +169,7 @@ vec4 dFract2(vec3 p, vec3 pos, float i){
     }
 
     z *= pow(Scale, float(-it));
-    float res = dBox(z, vec3(0.0), vec3(0.001), 0.0).x;
+    float res = dBox(z, vec3(0.0), vec3(0.00001), 0.0).x;
 
     return vec4(res , clamp(orbit, 0.0, 1.0));
 }
@@ -208,7 +208,7 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
     float d = 0.0; //dist total parcouru
     vec4 s; //distance et couleur de la scene
     vec3 col; //couleur du rayon (couleur de la scene la plus proche au dernier pas)
-    const int steps = 500;
+    const int steps = 200;
     float mind = 1000000.;
     vec3 colMind = vec3(0.0);
     float nbIt = 0.;
@@ -219,7 +219,7 @@ vec4 march(vec3 rO, vec3 rD, float maxDist) {
         s = scene(cp);
         d += s.x;
         col = s.yzw;
-        if(s.x < mind) {mind = s.x; colMind = s.yzw;}
+        //if(s.x < mind) {mind = s.x; colMind = s.yzw;}
         if (s.x < MINDIST) {
             break; //touche
         }
@@ -241,7 +241,7 @@ float shadowMarch(vec3 rO, vec3 rD, float maxDist){
     float d = 0.0; //dist total parcouru
     vec4 s; //distance et couleur de la scene
     float mind = 1000000.;
-    const int steps = 400;
+    const int steps = 100;
     int nbIt = 0;
 
     for (int i = 0; i < steps; i++) {
@@ -285,7 +285,7 @@ vec3 color(vec3 rO, vec3 rD) {//fonction principale
 
 void main() {
     vec2 uv = vTexCoord * 2. - 1.;
-
+    uv.x *= resolution.x/resolution.y;
     //vec3 rO = vec3(0.0, mouse.y, 0.0);
     //vec3 rD = normalize((vec3(uv.x, uv.y, 0.5) - rO));
 

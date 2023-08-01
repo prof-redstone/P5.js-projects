@@ -26,7 +26,7 @@ let param = {
     scale: 1.9073,
     shift: [-3.508, -3.593, 3.295],
     color: [-0.29, 2.36, 0.06],
-    it: 20,
+    it: 22,
     gamma: 1.5
 }
 
@@ -36,7 +36,7 @@ function preload() {
 
 function setup() {
     let size = min(windowWidth, windowHeight);
-    createCanvas(size, size, WEBGL);
+    createCanvas(windowWidth, windowHeight, WEBGL);
     frameRate(60)
     pixelDensity(1);
     pos = createVector(4, 5, 4);
@@ -67,7 +67,7 @@ function draw() {
 
 function changeFract(){
     fractNum = fractNum == fracts.length-1 ? 0 : fractNum+1;
-    print(fractNum); 
+    console.log("fractal num ", fractNum); 
     param.scale = fracts[fractNum][0]
     param.ang1 = fracts[fractNum][1]
     param.ang2 = fracts[fractNum][2]
@@ -77,6 +77,12 @@ function changeFract(){
     param.color[0] = fracts[fractNum][6]
     param.color[1] = fracts[fractNum][7]
     param.color[2] = fracts[fractNum][8]
+    param.it = fracts[fractNum][9]
+    
+    pos = createVector(4, 5, 4);
+    vueAng1 = 3.8;
+    vueAng2 = 2.3;
+    speed = 0.08;
 }
 
 
@@ -185,10 +191,10 @@ function move() {
 
     //gamma
     if (keyIsDown(85)) { //u
-        param.gamma = max(min(param.gamma - 0.03, 2.0), 0.5)
+        param.gamma = max(min(param.gamma - 0.03, 2.5), 0.5)
     }
     if (keyIsDown(73)) { //i
-        param.gamma = max(min(param.gamma + 0.03, 2.0), 0.5)
+        param.gamma = max(min(param.gamma + 0.03, 2.5), 0.5)
     }
 
 }
