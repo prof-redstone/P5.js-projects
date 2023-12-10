@@ -197,7 +197,7 @@ vec3 colorBG(vec3 rD) {
     vec3 blue = vec3(0.0157, 0.0314, 0.1765) + vec3(1.0) * (rD.y) * 0.005; //couleur du fond si ne touche rien
     float sunSize = 0.02;
     float sun = clamp(dot(rD, vec3(0.0,1.0,0.0)) -1.0 + sunSize, 0.0, 1.0);
-    return blue + mix(vec3(0.0), vec3(0.9451, 0.9451, 0.1922) - blue, sun)*30.;
+    return blue + mix(vec3(0.0), vec3(0.9451, 0.8196, 0.1922) - blue, sun)*30.;
 }
 
 vec4 march(vec3 rO, vec3 rD, float maxDist) {

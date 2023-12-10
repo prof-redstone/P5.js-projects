@@ -38,7 +38,7 @@ function setup() {
     let size = min(windowWidth, windowHeight);
     createCanvas(windowWidth, windowHeight, WEBGL);
     frameRate(60)
-    pixelDensity(1);
+    pixelDensity(2);
     pos = createVector(4, 5, 4);
     vue = createVector(0, 0, 0);
 }
@@ -213,7 +213,7 @@ function keyPressed() {
     }
 
     //change fract
-    if (keyCode == 32) {
+    if (keyCode == 32) {//barre espace
         changeFract()
     }
 }
@@ -225,9 +225,33 @@ function mouseWheel(event) {
         speed *= 0.5;
     }
     speed = min(speed, 0.16);
-    speed = max(speed, 0.00001953125);
+    speed = max(speed, 0.0000048828125);
 }
 
 function mouseClicked() {
     requestPointerLock();
 }
+
+function guide(){
+    console.log("z:forward, s:backward, q:left, d:right, e:up, a:down")
+    console.log("mouseWheelUP:speedUP, mouseWheelDOWN:speedDown")
+    console.log("Mouse and ArrowKey control camera")
+    console.log("x:increaseIteration, w:decreaseIteration")
+    console.log("u:decreaseGamma, i:increaseGamme")
+    console.log("spaceBar:LoadFract")
+
+    console.log("v:decreaseScale, b:increaseScale")
+    console.log("t:decreaseAngle1, y:increaseAngle1")
+    console.log("g:decreaseAngle2, h:increaseAngle2")
+
+    
+    console.log("o:decreaseShift1, p:increaseShift1")
+    console.log("l:decreaseShift2, m:increaseShift2")
+    console.log(";:decreaseShift3, ::increaseShift3")
+
+    console.log("&:decreaseColor1, é:increaseColor1")
+    console.log("\":decreaseColor2, ':increaseColor2")
+    console.log("(:decreaseColor3, -:increaseColor3")
+}
+
+guide()
